@@ -19,6 +19,7 @@ class BaseLLMAdapter(ABC):
         personality: str = "Friendly",
         response_length: str = "medium",
         explanation_level: str = "intermediate",
+        is_first_message: bool = False,
     ) -> str:
         """Generates a text completion given the user's prompt and formatting requirements.
 

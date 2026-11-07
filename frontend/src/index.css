@@ -30,8 +30,98 @@
   @apply bg-gray-300 dark:bg-mello-charcoal-700 rounded-full hover:bg-gray-400 dark:hover:bg-mello-charcoal-600 transition-colors;
 }
 
-/* Code block styles */
+/* ============================================================
+   Mello AI – ChatGPT-inspired syntax highlighting theme
+   Background: #282c34 (VS Code Dark+ / ChatGPT alike)
+   ============================================================ */
+
 pre code.hljs {
   padding: 0 !important;
   background: transparent !important;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.7;
 }
+
+/* ---- token colours matching ChatGPT's VS Code-ish palette ---- */
+
+/* Comments → muted green-grey (clearly distinct) */
+.hljs-comment,
+.hljs-quote {
+  color: #6a9955;
+  font-style: italic;
+}
+
+/* Keywords: class, public, void, return, if, for … */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: #c586c0;   /* soft purple */
+  font-weight: 500;
+}
+
+/* Types / built-ins: String, int, boolean, List … */
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal {
+  color: #4ec9b0;   /* teal-green */
+}
+
+/* Function / method names */
+.hljs-title,
+.hljs-section,
+.hljs-selector-id {
+  color: #dcdcaa;   /* soft yellow */
+}
+
+/* Class / type names (CapitalCase identifiers) */
+.hljs-class .hljs-title,
+.hljs-title.class_ {
+  color: #4ec9b0;
+}
+
+/* Strings */
+.hljs-string,
+.hljs-template-variable,
+.hljs-doctag {
+  color: #ce9178;   /* warm orange-tan */
+}
+
+/* Numbers */
+.hljs-number,
+.hljs-regexp,
+.hljs-link {
+  color: #b5cea8;   /* light green */
+}
+
+/* Variables / params */
+.hljs-variable,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-attr {
+  color: #9cdcfe;   /* light blue */
+}
+
+/* Symbols / special chars */
+.hljs-symbol,
+.hljs-bullet {
+  color: #569cd6;
+}
+
+/* Attribute / named property */
+.hljs-name,
+.hljs-attribute {
+  color: #9cdcfe;
+}
+
+/* Emphasis / strong in prose (markdown) */
+.hljs-emphasis { font-style: italic; }
+.hljs-strong  { font-weight: 700; }
+
+/* Deletion / Addition (diff) */
+.hljs-deletion  { color: #f44747; }
+.hljs-addition  { color: #b5cea8; }
+
+/* Meta / preprocessor */
+.hljs-meta { color: #9b9b9b; }

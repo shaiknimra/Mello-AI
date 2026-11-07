@@ -12,12 +12,21 @@ import backend.app.models  # Ensures all models are registered with Base.metadat
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan context manager for startup and shutdown routines."""
-    # Ensure database schema tables exist on application startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    print("--> entering lifespan", flush=True)
+    if settings.APP_ENV != "test":
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning("Database initialization skipped or deferred: %s", e)
     yield
-    # Cleanup database engine connections on shutdown
-    await engine.dispose()
+    print("--> exiting lifespan", flush=True)
+    if settings.APP_ENV != "test":
+        try:
+            await engine.dispose()
+        except Exception:
+            pass
 
 
 app = FastAPI(

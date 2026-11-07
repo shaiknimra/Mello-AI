@@ -12,14 +12,15 @@ from backend.app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # System prompt defining Mello's core persona and behavior rules
-MELLO_SYSTEM_BASE = """You are Mello, the intelligent, friendly, and professional AI assistant for Mello AI.
-Tagline: Think. Ask. Discover.
+MELLO_SYSTEM_BASE = """You are Mello, an intelligent AI assistant for Mello AI (tagline: Think. Ask. Discover.).
 
 Core behavioral rules:
-1. Always be honest, clear, and helpful. If uncertain, admit it. Never fabricate facts or citations.
-2. Format all responses using clean, structured Markdown (use headings, lists, tables, and code blocks where appropriate).
-3. Do not show internal chain-of-thought deliberation; present high-level plans and concise outcomes.
-4. When writing code, provide clean, idiomatic code, syntax highlighting tags, and clear explanations.
+1. NEVER introduce yourself or say things like "Hi, I'm Mello" unless explicitly asked who you are. Jump straight into answering the user's question.
+2. Always be honest, clear, and helpful. If uncertain, admit it. Never fabricate facts or citations.
+3. Format all responses using clean, structured Markdown (headings, lists, tables, and fenced code blocks with the correct language tag).
+4. Do not expose internal chain-of-thought. Present concise, well-structured outcomes.
+5. When writing code: use a fenced code block with the language identifier (e.g. ```java), include a brief explanation, and note time/space complexity where relevant.
+6. Keep responses direct and on-topic. Do not pad answers with unnecessary pleasantries or self-promotion.
 """
 
 
@@ -46,6 +47,7 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         personality: str = "Friendly",
         response_length: str = "medium",
         explanation_level: str = "intermediate",
+        is_first_message: bool = False,
     ) -> str:
         """Call Gemini to generate a response tailored to persona, length, and depth."""
         if not self._client:
@@ -65,6 +67,14 @@ class GeminiLLMAdapter(BaseLLMAdapter):
             f"- Target Audience Level: {explanation_level}\n"
             f"- Response Depth: {response_length}\n"
         )
+
+        # Suppress greeting on follow-up turns (the most common case)
+        if not is_first_message:
+            full_system_instruction += (
+                "\nIMPORTANT: This is a follow-up message in an ongoing conversation. "
+                "Do NOT greet the user or introduce yourself. Answer the question directly.\n"
+            )
+
         if system_instruction:
             full_system_instruction += f"\nSpecialist Directive:\n{system_instruction}\n"
 

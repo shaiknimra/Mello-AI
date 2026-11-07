@@ -17,6 +17,7 @@ class MockLLMAdapter(BaseLLMAdapter):
         personality: str = "Friendly",
         response_length: str = "medium",
         explanation_level: str = "intermediate",
+        is_first_message: bool = False,
     ) -> str:
         # Provide rich sample markdown with code and list formatting so UI rendering is proven
         return (

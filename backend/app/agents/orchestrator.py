@@ -11,6 +11,7 @@ from langgraph.graph import StateGraph, END
 from backend.app.agents.state import MelloAgentState
 from backend.app.agents.specialists import SPECIALIST_AGENTS, get_agent
 from backend.app.services.llm.base import BaseLLMAdapter
+from backend.app.services.llm.mock import MockLLMAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -81,23 +82,50 @@ class MelloOrchestrator:
 
     def __init__(self, llm_adapter: BaseLLMAdapter):
         self.llm = llm_adapter
+        # Detect mock adapter so we skip external tool calls in tests
+        self.is_mock = isinstance(llm_adapter, MockLLMAdapter)
         self.graph = self._build_graph()
 
     def _build_graph(self):
         workflow = StateGraph(MelloAgentState)
 
-        # Specialist Execution Nodes
+        # ── Shared agent execution helper ────────────────────────────────────
         async def execute_agent(state: MelloAgentState, agent_id: str) -> Dict[str, Any]:
             agent_def = get_agent(agent_id)
-            prompt_with_context = build_context_prompt(state.get("history", []), state.get("prompt", ""))
+            history = state.get("history", [])
+            prompt_with_context = build_context_prompt(history, state.get("prompt", ""))
+            is_first_message = len(history) == 0
 
+            # Tool invocation – only when using the real Gemini adapter
+            tool_output = None
+            if not self.is_mock:
+                if agent_id == "research":
+                    from backend.app.tools.web_search import WebSearchTool
+                    tool_result = await WebSearchTool().execute(query=state.get("prompt", ""))
+                    if tool_result.success and tool_result.citations:
+                        tool_output = "\n**Sources:**\n" + "\n".join(
+                            f"- [{c.title}]({c.url})" for c in tool_result.citations
+                        )
+                elif agent_id == "learning":
+                    calc_triggers = ["calculate", "result of", "plus", "minus", "times", "divide"]
+                    if any(tok in state.get("prompt", "").lower() for tok in calc_triggers):
+                        from backend.app.tools.calculator import SafeCalculatorTool
+                        calc_result = await SafeCalculatorTool().execute(expression=state.get("prompt", ""))
+                        if calc_result.success:
+                            tool_output = f"\n**Calculation Result:** {calc_result.data.get('result')}"
+
+            # Call LLM
             response = await self.llm.generate_response(
                 prompt=prompt_with_context,
                 system_instruction=agent_def["prompt"],
                 personality=state.get("personality", "Friendly"),
                 response_length=state.get("response_length", "medium"),
                 explanation_level=state.get("explanation_level", "intermediate"),
+                is_first_message=is_first_message,
             )
+
+            if tool_output:
+                response = f"{response}\n{tool_output}"
 
             return {
                 "active_agent_id": agent_def["id"],
@@ -106,6 +134,7 @@ class MelloOrchestrator:
                 "final_response": response,
             }
 
+        # ── Individual agent node wrappers ───────────────────────────────────
         async def coordinator_node(state: MelloAgentState):
             return await execute_agent(state, "coordinator")
 
@@ -124,11 +153,10 @@ class MelloOrchestrator:
         async def writing_node(state: MelloAgentState):
             return await execute_agent(state, "writing")
 
-        # Routing node
         async def routing_node(state: MelloAgentState):
             return {"progress_status": "Understanding your question"}
 
-        # Register nodes in graph
+        # ── Register nodes ───────────────────────────────────────────────────
         workflow.add_node("routing_node", routing_node)
         workflow.add_node("coordinator_node", coordinator_node)
         workflow.add_node("coding_node", coding_node)
@@ -137,7 +165,6 @@ class MelloOrchestrator:
         workflow.add_node("planning_node", planning_node)
         workflow.add_node("writing_node", writing_node)
 
-        # Define entry point and conditional branching
         workflow.set_entry_point("routing_node")
         workflow.add_conditional_edges(
             "routing_node",
@@ -153,12 +180,8 @@ class MelloOrchestrator:
         )
 
         # All specialist nodes terminate the graph
-        workflow.add_edge("coordinator_node", END)
-        workflow.add_edge("coding_node", END)
-        workflow.add_edge("research_node", END)
-        workflow.add_edge("learning_node", END)
-        workflow.add_edge("planning_node", END)
-        workflow.add_edge("writing_node", END)
+        for node in ["coordinator_node", "coding_node", "research_node", "learning_node", "planning_node", "writing_node"]:
+            workflow.add_edge(node, END)
 
         return workflow.compile()
 

@@ -107,13 +107,17 @@ export function App() {
 
   // Fetch conversations whenever user logs in or out
   useEffect(() => {
+    let ignore = false;
     if (user) {
       listConversations()
-        .then((data) => setConversations(data))
+        .then((data) => {
+          if (!ignore) setConversations(data);
+        })
         .catch((err) => console.error('Failed to list conversations:', err));
-    } else {
-      setConversations([]);
     }
+    return () => {
+      ignore = true;
+    };
   }, [user]);
 
   // Auto-scroll to bottom of messages
