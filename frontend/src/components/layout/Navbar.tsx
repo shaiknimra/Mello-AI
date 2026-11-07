@@ -1,0 +1,88 @@
+import React from 'react';
+import { Sparkles, Sun, Moon, Menu } from 'lucide-react';
+
+interface NavbarProps {
+  isDark: boolean;
+  toggleTheme: () => void;
+  toggleSidebar: () => void;
+  isBackendHealthy: boolean | null;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({
+  isDark,
+  toggleTheme,
+  toggleSidebar,
+  isBackendHealthy,
+}) => {
+  return (
+    <header className="h-14 border-b border-gray-200 dark:border-mello-charcoal-800 bg-white/80 dark:bg-mello-charcoal-900/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 transition-colors">
+      {/* Left: Mobile Menu + Brand */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleSidebar}
+          className="p-1.5 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-mello-charcoal-800 md:hidden transition-colors"
+          title="Toggle Sidebar"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2.5 select-none">
+          {/* Logo icon */}
+          <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-mello-purple-600 to-mello-purple-400 flex items-center justify-center text-white shadow-md shadow-mello-purple-500/30">
+            <Sparkles className="w-4 h-4" />
+          </div>
+
+          <div className="flex flex-col">
+            <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">
+              Mello <span className="text-mello-purple-500">AI</span>
+            </span>
+            <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 hidden sm:inline -mt-0.5">
+              Think. Ask. Discover.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Backend Status & Theme Toggle */}
+      <div className="flex items-center gap-3">
+        {/* Backend health status pill */}
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200 dark:border-mello-charcoal-700 bg-gray-50 dark:bg-mello-charcoal-850 text-gray-600 dark:text-gray-300"
+          title={
+            isBackendHealthy === true
+              ? 'FastAPI Backend Connected'
+              : isBackendHealthy === false
+              ? 'FastAPI Backend Disconnected'
+              : 'Connecting to Backend...'
+          }
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isBackendHealthy === true
+                ? 'bg-emerald-500'
+                : isBackendHealthy === false
+                ? 'bg-red-500 animate-pulse'
+                : 'bg-amber-400 animate-ping'
+            }`}
+          />
+          <span className="hidden sm:inline">
+            {isBackendHealthy === true
+              ? 'Online'
+              : isBackendHealthy === false
+              ? 'Offline'
+              : 'Checking'}
+          </span>
+        </div>
+
+        {/* Dark / Light Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-xl text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-mello-charcoal-800 transition-colors"
+          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-gray-600" />}
+        </button>
+      </div>
+    </header>
+  );
+};
