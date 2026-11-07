@@ -2,7 +2,24 @@ import type { ChatRequestPayload, ChatResponsePayload } from '../types/chat';
 import type { User, AuthResponse, ConversationSummary } from '../types/auth';
 import type { AgentDefinition } from '../types/agent';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+// Resolve base URL from environment variables, supporting both VITE_API_URL and VITE_API_BASE_URL
+const rawBase = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').trim();
+
+function getApiBaseUrl(): string {
+  if (!rawBase) {
+    return '/api/v1';
+  }
+  const cleanBase = rawBase.replace(/\/+$/, '');
+  if (cleanBase.endsWith('/api/v1')) {
+    return cleanBase;
+  }
+  if (cleanBase.endsWith('/api')) {
+    return `${cleanBase}/v1`;
+  }
+  return `${cleanBase}/api/v1`;
+}
+
+const API_BASE_URL = getApiBaseUrl();
 
 export class ApiError extends Error {
   statusCode?: number;
