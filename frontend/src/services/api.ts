@@ -228,7 +228,7 @@ export async function sendChatMessage(payload: ChatRequestPayload): Promise<Chat
   } catch (err: any) {
     if (err instanceof ApiError) throw err;
     throw new ApiError(
-      'Mello AI server is currently unreachable. Please make sure the backend is running on port 8000.'
+      'Mello AI server is currently unreachable. Please check your connection or try again later.'
     );
   }
 }

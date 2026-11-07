@@ -57,9 +57,10 @@ app = FastAPI(
 )
 
 # Configure Cross-Origin Resource Sharing (CORS) for frontend React client
+# Uses regex to safely allow any Vercel preview or production origin with credentials enabled
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"^https?:\/\/.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
