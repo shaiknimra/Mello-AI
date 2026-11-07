@@ -1,5 +1,6 @@
 import type { ChatRequestPayload, ChatResponsePayload } from '../types/chat';
 import type { User, AuthResponse, ConversationSummary } from '../types/auth';
+import type { AgentDefinition } from '../types/agent';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -35,6 +36,20 @@ function getAuthHeaders(): HeadersInit {
     headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
+}
+
+// Agents API
+export async function fetchAgents(): Promise<AgentDefinition[]> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/agents`);
+    if (!res.ok) {
+      throw new ApiError('Failed to fetch agents list', res.status);
+    }
+    return await res.json();
+  } catch (err: any) {
+    console.error('Error fetching agents:', err);
+    return [];
+  }
 }
 
 // Health Check

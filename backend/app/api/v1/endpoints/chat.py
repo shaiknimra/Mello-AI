@@ -1,9 +1,9 @@
-"""Chat endpoint for Mello AI with per-user conversation persistence."""
+"""Chat endpoint for Mello AI with LangGraph agent orchestration and per-user persistence."""
 
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import Optional
+from typing import Optional, List, Dict
 from datetime import datetime, timezone
 import uuid
 import logging
@@ -16,6 +16,7 @@ from backend.app.models.conversation import Conversation
 from backend.app.models.message import Message
 from backend.app.core.security import get_current_user_optional
 from backend.app.core.config import settings
+from backend.app.agents.orchestrator import MelloOrchestrator
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -28,7 +29,7 @@ async def send_chat_message(
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: AsyncSession = Depends(get_db),
 ) -> ChatMessageResponse:
-    """Send a message to Mello and receive a generated assistant response."""
+    """Send a message to Mello and receive a generated response orchestrated by LangGraph."""
     # 1. Enforce daily usage limit for registered users
     if current_user:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -50,8 +51,10 @@ async def send_chat_message(
                 status="completed",
             )
 
-    # 2. Determine or create conversation
+    # 2. Determine or create conversation & extract prior history
     active_conversation = None
+    history: List[Dict[str, str]] = []
+
     if current_user:
         if payload.conversation_id:
             stmt = select(Conversation).where(
@@ -60,6 +63,12 @@ async def send_chat_message(
             )
             res = await db.execute(stmt)
             active_conversation = res.scalar_one_or_none()
+
+            if active_conversation and active_conversation.messages:
+                history = [
+                    {"role": m.role, "content": m.content}
+                    for m in active_conversation.messages
+                ]
 
         if not active_conversation:
             # Auto-generate a clean title from the first ~6 words
@@ -87,23 +96,30 @@ async def send_chat_message(
 
     conversation_id = active_conversation.id if active_conversation else (payload.conversation_id or str(uuid.uuid4()))
 
-    # 3. Generate response using the configured LLM adapter
+    # 3. Execute LangGraph Orchestrator
     try:
-        content = await llm.generate_response(
+        orchestrator = MelloOrchestrator(llm_adapter=llm)
+        orchestration_result = await orchestrator.run(
             prompt=payload.message,
+            target_agent=payload.agent_id or "coordinator",
+            history=history,
             personality=payload.personality,
             response_length=payload.response_length,
             explanation_level=payload.explanation_level,
         )
 
-        # Store Assistant Message in DB if authenticated
+        content = orchestration_result["content"]
+        active_agent_id = orchestration_result["agent_id"]
+        active_agent_name = orchestration_result["agent_name"]
+
+        # 4. Store Assistant Message in DB if authenticated
         if current_user and active_conversation:
             assistant_db_message = Message(
                 conversation_id=active_conversation.id,
                 role="assistant",
                 content=content,
-                agent_id=payload.agent_id or "coordinator",
-                agent_name="Coordinator Agent" if (payload.agent_id or "coordinator") == "coordinator" else f"{payload.agent_id.capitalize()} Agent",
+                agent_id=active_agent_id,
+                agent_name=active_agent_name,
                 status="completed",
             )
             db.add(assistant_db_message)
@@ -117,12 +133,12 @@ async def send_chat_message(
             conversation_id=conversation_id,
             role="assistant",
             content=content,
-            agent_id=payload.agent_id or "coordinator",
-            agent_name="Coordinator Agent" if (payload.agent_id or "coordinator") == "coordinator" else f"{payload.agent_id.capitalize()} Agent",
+            agent_id=active_agent_id,
+            agent_name=active_agent_name,
             status="completed",
         )
     except Exception as exc:
-        logger.exception("Error processing chat message: %s", exc)
+        logger.exception("Error in LangGraph orchestration: %s", exc)
         return ChatMessageResponse(
             conversation_id=conversation_id,
             role="assistant",

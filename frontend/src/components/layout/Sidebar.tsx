@@ -16,6 +16,7 @@ import type {
   ChatSettings,
 } from '../../types/chat';
 import type { ConversationSummary } from '../../types/auth';
+import type { AgentDefinition } from '../../types/agent';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -28,6 +29,9 @@ interface SidebarProps {
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onTogglePin: (id: string, currentPin: boolean) => void;
+  agents?: AgentDefinition[];
+  selectedAgentId?: string;
+  onSelectAgent?: (id: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -41,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectConversation,
   onDeleteConversation,
   onTogglePin,
+  selectedAgentId,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -273,9 +278,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Active Agent indicator */}
           <div className="pt-2 border-t border-gray-200 dark:border-mello-charcoal-800 flex items-center justify-between text-[11px] text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 capitalize">
               <Bot className="w-3.5 h-3.5 text-mello-purple-400" />
-              <span>Coordinator</span>
+              <span>{selectedAgentId ? `${selectedAgentId} Agent` : 'Coordinator Agent'}</span>
             </div>
             <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded-full font-medium">
               Active

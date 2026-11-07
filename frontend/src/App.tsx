@@ -7,6 +7,7 @@ import { EmptyState } from './components/chat/EmptyState';
 import { AuthModal } from './components/auth/AuthModal';
 import type { ChatMessage, ChatSettings } from './types/chat';
 import type { User, ConversationSummary } from './types/auth';
+import type { AgentDefinition } from './types/agent';
 import {
   sendChatMessage,
   checkBackendHealth,
@@ -15,8 +16,18 @@ import {
   getConversation,
   deleteConversation,
   updateConversation,
+  fetchAgents,
   removeStoredToken,
 } from './services/api';
+
+const AGENT_STATUS_MAP: Record<string, { start: string; mid: string }> = {
+  coordinator: { start: 'Understanding your question...', mid: 'Preparing your response...' },
+  coding: { start: 'Working with Coding Agent...', mid: 'Verifying code & complexity...' },
+  research: { start: 'Searching & synthesizing information...', mid: 'Comparing reliable claims...' },
+  learning: { start: 'Preparing conceptual explanation...', mid: 'Scaffolding steps & analogies...' },
+  planning: { start: 'Structuring plan & milestones...', mid: 'Checking dependencies & risks...' },
+  writing: { start: 'Refining prose & style...', mid: 'Polishing draft...' },
+};
 
 export function App() {
   // Theme state: Dark mode is default
@@ -33,6 +44,10 @@ export function App() {
 
   // User state
   const [user, setUser] = useState<User | null>(null);
+
+  // Multi-Agent State
+  const [agents, setAgents] = useState<AgentDefinition[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('coordinator');
 
   // Conversations state
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -62,7 +77,7 @@ export function App() {
     }
   }, [isDark]);
 
-  // Check backend health and authenticate on mount
+  // Check backend health, agents catalog, and authenticate on mount
   useEffect(() => {
     let isMounted = true;
     checkBackendHealth()
@@ -76,6 +91,12 @@ export function App() {
     getCurrentUser().then((currentUser) => {
       if (isMounted && currentUser) {
         setUser(currentUser);
+      }
+    });
+
+    fetchAgents().then((fetchedAgents) => {
+      if (isMounted && fetchedAgents.length > 0) {
+        setAgents(fetchedAgents);
       }
     });
 
@@ -181,17 +202,19 @@ export function App() {
     setMessages((prev) => [...prev, newUserMessage]);
     setInput('');
     setIsLoading(true);
-    setStatusText('Understanding your question...');
+
+    const statusConfig = AGENT_STATUS_MAP[selectedAgentId] || AGENT_STATUS_MAP['coordinator'];
+    setStatusText(statusConfig.start);
 
     try {
       setTimeout(() => {
-        setStatusText('Preparing your response...');
+        setStatusText(statusConfig.mid);
       }, 700);
 
       const response = await sendChatMessage({
         message: trimmed,
         conversation_id: conversationId || undefined,
-        agent_id: 'coordinator',
+        agent_id: selectedAgentId,
         response_length: settings.responseLength,
         explanation_level: settings.explanationLevel,
         personality: settings.personality,
@@ -254,6 +277,9 @@ export function App() {
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
         onTogglePin={handleTogglePin}
+        agents={agents}
+        selectedAgentId={selectedAgentId}
+        onSelectAgent={setSelectedAgentId}
       />
 
       {/* Main Chat Area */}
@@ -267,6 +293,9 @@ export function App() {
           user={user}
           onOpenAuth={() => setAuthModalOpen(true)}
           onLogout={handleLogout}
+          agents={agents}
+          selectedAgentId={selectedAgentId}
+          onSelectAgent={setSelectedAgentId}
         />
 
         {/* Chat Feed */}
