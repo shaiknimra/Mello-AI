@@ -1,11 +1,15 @@
 import React from 'react';
-import { Sparkles, Sun, Moon, Menu } from 'lucide-react';
+import { Sparkles, Sun, Moon, Menu, User as UserIcon, LogOut } from 'lucide-react';
+import type { User } from '../../types/auth';
 
 interface NavbarProps {
   isDark: boolean;
   toggleTheme: () => void;
   toggleSidebar: () => void;
   isBackendHealthy: boolean | null;
+  user: User | null;
+  onOpenAuth: () => void;
+  onLogout: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -13,6 +17,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   toggleTheme,
   toggleSidebar,
   isBackendHealthy,
+  user,
+  onOpenAuth,
+  onLogout,
 }) => {
   return (
     <header className="h-14 border-b border-gray-200 dark:border-mello-charcoal-800 bg-white/80 dark:bg-mello-charcoal-900/80 backdrop-blur-md sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 transition-colors">
@@ -27,7 +34,6 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
 
         <div className="flex items-center gap-2.5 select-none">
-          {/* Logo icon */}
           <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-mello-purple-600 to-mello-purple-400 flex items-center justify-center text-white shadow-md shadow-mello-purple-500/30">
             <Sparkles className="w-4 h-4" />
           </div>
@@ -43,17 +49,17 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Right: Backend Status & Theme Toggle */}
-      <div className="flex items-center gap-3">
+      {/* Right: Actions, User Status, Theme Toggle */}
+      <div className="flex items-center gap-2.5">
         {/* Backend health status pill */}
         <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200 dark:border-mello-charcoal-700 bg-gray-50 dark:bg-mello-charcoal-850 text-gray-600 dark:text-gray-300"
+          className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-gray-200 dark:border-mello-charcoal-700 bg-gray-50 dark:bg-mello-charcoal-850 text-gray-600 dark:text-gray-300"
           title={
             isBackendHealthy === true
-              ? 'FastAPI Backend Connected'
+              ? 'FastAPI Backend Online'
               : isBackendHealthy === false
-              ? 'FastAPI Backend Disconnected'
-              : 'Connecting to Backend...'
+              ? 'FastAPI Backend Offline'
+              : 'Checking Backend...'
           }
         >
           <span
@@ -65,14 +71,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'bg-amber-400 animate-ping'
             }`}
           />
-          <span className="hidden sm:inline">
-            {isBackendHealthy === true
-              ? 'Online'
-              : isBackendHealthy === false
-              ? 'Offline'
-              : 'Checking'}
-          </span>
+          <span>{isBackendHealthy === true ? 'Online' : 'Offline'}</span>
         </div>
+
+        {/* User profile / Auth Button */}
+        {user ? (
+          <div className="flex items-center gap-2">
+            {/* Daily usage pill */}
+            <div
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-mello-purple-500/10 text-mello-purple-600 dark:text-mello-purple-300 border border-mello-purple-500/20"
+              title="Daily remaining messages allowance"
+            >
+              <span>{user.remaining_messages}/50 left</span>
+            </div>
+
+            {/* Logout button */}
+            <button
+              onClick={onLogout}
+              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-mello-charcoal-800 transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenAuth}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-mello-purple-600 hover:bg-mello-purple-500 text-white font-medium text-xs shadow-sm transition-colors"
+          >
+            <UserIcon className="w-3.5 h-3.5" />
+            <span>Sign In</span>
+          </button>
+        )}
 
         {/* Dark / Light Toggle */}
         <button

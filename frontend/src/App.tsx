@@ -4,8 +4,19 @@ import { Sidebar } from './components/layout/Sidebar';
 import { MessageBubble } from './components/chat/MessageBubble';
 import { ChatInput } from './components/chat/ChatInput';
 import { EmptyState } from './components/chat/EmptyState';
+import { AuthModal } from './components/auth/AuthModal';
 import type { ChatMessage, ChatSettings } from './types/chat';
-import { sendChatMessage, checkBackendHealth } from './services/api';
+import type { User, ConversationSummary } from './types/auth';
+import {
+  sendChatMessage,
+  checkBackendHealth,
+  getCurrentUser,
+  listConversations,
+  getConversation,
+  deleteConversation,
+  updateConversation,
+  removeStoredToken,
+} from './services/api';
 
 export function App() {
   // Theme state: Dark mode is default
@@ -15,13 +26,16 @@ export function App() {
     return true; // Default dark mode
   });
 
-  // Sidebar toggle for mobile
+  // UI state
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Backend connection status
+  const [authModalOpen, setAuthModalOpen] = useState(false);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
 
-  // Conversation state
+  // User state
+  const [user, setUser] = useState<User | null>(null);
+
+  // Conversations state
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationId, setConversationId] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -48,7 +62,7 @@ export function App() {
     }
   }, [isDark]);
 
-  // Check backend health on mount
+  // Check backend health and authenticate on mount
   useEffect(() => {
     let isMounted = true;
     checkBackendHealth()
@@ -58,10 +72,28 @@ export function App() {
       .catch(() => {
         if (isMounted) setIsBackendHealthy(false);
       });
+
+    getCurrentUser().then((currentUser) => {
+      if (isMounted && currentUser) {
+        setUser(currentUser);
+      }
+    });
+
     return () => {
       isMounted = false;
     };
   }, []);
+
+  // Fetch conversations whenever user logs in or out
+  useEffect(() => {
+    if (user) {
+      listConversations()
+        .then((data) => setConversations(data))
+        .catch((err) => console.error('Failed to list conversations:', err));
+    } else {
+      setConversations([]);
+    }
+  }, [user]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -74,10 +106,63 @@ export function App() {
     setSettings((prev) => ({ ...prev, ...newSettings }));
   };
 
+  const handleLogout = () => {
+    removeStoredToken();
+    setUser(null);
+    setConversations([]);
+    handleNewChat();
+  };
+
   const handleNewChat = () => {
     setConversationId('');
     setMessages([]);
     setInput('');
+  };
+
+  const handleSelectConversation = async (id: string) => {
+    if (id === conversationId) return;
+    try {
+      setIsLoading(true);
+      const convDetail = await getConversation(id);
+      setConversationId(convDetail.id);
+      setMessages(
+        convDetail.messages.map((m: any) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          agentId: m.agent_id,
+          agentName: m.agent_name,
+          timestamp: m.created_at,
+          status: m.status || 'completed',
+        }))
+      );
+    } catch (err) {
+      console.error('Failed to load conversation:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    try {
+      await deleteConversation(id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (conversationId === id) {
+        handleNewChat();
+      }
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+    }
+  };
+
+  const handleTogglePin = async (id: string, currentPin: boolean) => {
+    try {
+      await updateConversation(id, { is_pinned: !currentPin });
+      const updated = await listConversations();
+      setConversations(updated);
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+    }
   };
 
   const handleSendMessage = async () => {
@@ -129,6 +214,12 @@ export function App() {
 
       setMessages((prev) => [...prev, assistantMessage]);
       setIsBackendHealthy(true);
+
+      // Refresh conversations list & user usage counts
+      if (user) {
+        listConversations().then(setConversations).catch(console.error);
+        getCurrentUser().then(setUser).catch(console.error);
+      }
     } catch (err: any) {
       console.error('Chat error:', err);
       setIsBackendHealthy(false);
@@ -159,6 +250,10 @@ export function App() {
         settings={settings}
         updateSettings={updateSettings}
         activeConversationId={conversationId}
+        conversations={conversations}
+        onSelectConversation={handleSelectConversation}
+        onDeleteConversation={handleDeleteConversation}
+        onTogglePin={handleTogglePin}
       />
 
       {/* Main Chat Area */}
@@ -169,6 +264,9 @@ export function App() {
           toggleTheme={toggleTheme}
           toggleSidebar={() => setSidebarOpen((prev) => !prev)}
           isBackendHealthy={isBackendHealthy}
+          user={user}
+          onOpenAuth={() => setAuthModalOpen(true)}
+          onLogout={handleLogout}
         />
 
         {/* Chat Feed */}
@@ -194,6 +292,15 @@ export function App() {
           activeStatusText={statusText}
         />
       </div>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={(authenticatedUser) => {
+          setUser(authenticatedUser);
+        }}
+      />
     </div>
   );
 }

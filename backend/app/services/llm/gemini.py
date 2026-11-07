@@ -68,41 +68,48 @@ class GeminiLLMAdapter(BaseLLMAdapter):
         if system_instruction:
             full_system_instruction += f"\nSpecialist Directive:\n{system_instruction}\n"
 
-        try:
-            from google.genai import types
+        # List candidate models in order of priority (configured model first)
+        candidate_models = [self.model, "gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.1-flash-lite"]
+        seen = set()
+        models_to_try = [m for m in candidate_models if not (m in seen or seen.add(m))]
 
-            # The google-genai client.aio handles async calls
-            response = await self._client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=full_system_instruction,
-                    temperature=0.7,
-                ),
-            )
-            return response.text or "I processed your request, but received an empty response. Please try rephrasing."
+        last_error = None
+        for model_name in models_to_try:
+            try:
+                from google.genai import types
 
-        except Exception as err:
-            err_str = str(err)
-            logger.error(f"Gemini API error: {err_str}")
-
-            # Friendly handling of quota/rate limits (HTTP 429)
-            if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower():
-                return (
-                    "⏳ **Mello is experiencing high demand**\n\n"
-                    "The free-tier rate limit was reached. Please wait a moment and try asking again shortly."
+                response = await self._client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=full_system_instruction,
+                        temperature=0.7,
+                    ),
                 )
+                if response.text:
+                    return response.text
+            except Exception as err:
+                last_error = err
+                err_str = str(err)
+                logger.warning(f"Gemini model '{model_name}' failed: {err_str}. Trying next candidate if available.")
+                if "429" in err_str or "quota" in err_str.lower() or "resource_exhausted" in err_str.lower():
+                    # Quota limits affect the entire account, so don't hammer other models
+                    return (
+                        "⏳ **Mello is experiencing high demand**\n\n"
+                        "The free-tier rate limit was reached. Please wait a moment and try asking again shortly."
+                    )
+                if "403" in err_str or "api key" in err_str.lower() or "permission_denied" in err_str.lower():
+                    return (
+                        "🔒 **Authentication Issue**\n\n"
+                        "The configured Gemini API key appears invalid or expired. Please check your `backend/.env` settings."
+                    )
+                continue
 
-            # Friendly handling of authentication or invalid key errors
-            if "403" in err_str or "api key" in err_str.lower() or "permission_denied" in err_str.lower():
-                return (
-                    "🔒 **Authentication Issue**\n\n"
-                    "The configured Gemini API key appears invalid or expired. Please check your `backend/.env` settings."
-                )
-
-            # General temporary unavailability message
-            return (
-                "⚠️ **Service Temporarily Unavailable**\n\n"
-                "Mello encountered a temporary hiccup communicating with the model provider. "
-                "Please try again in a few moments."
-            )
+        # If all candidates failed
+        err_str = str(last_error) if last_error else "Unknown error"
+        logger.error(f"All Gemini models failed. Last error: {err_str}")
+        return (
+            "⚠️ **Service Temporarily Unavailable**\n\n"
+            "Mello encountered a temporary hiccup communicating with the model provider. "
+            "Please try again in a few moments."
+        )

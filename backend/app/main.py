@@ -1,9 +1,24 @@
 """Main FastAPI entrypoint for Mello AI backend."""
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.core.config import settings
 from backend.app.api.v1.router import api_router
+from backend.app.db.session import engine, Base
+import backend.app.models  # Ensures all models are registered with Base.metadata
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan context manager for startup and shutdown routines."""
+    # Ensure database schema tables exist on application startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Cleanup database engine connections on shutdown
+    await engine.dispose()
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -11,6 +26,7 @@ app = FastAPI(
     description="Backend API powering Mello AI — a multi-agent AI assistant.",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
 )
 
 # Configure Cross-Origin Resource Sharing (CORS) for frontend React client

@@ -1,12 +1,22 @@
 """Application configuration management using Pydantic Settings.
 
-Reads environment variables from system environment and backend/.env file.
+Reads environment variables from system environment and .env file.
 """
 
 from typing import List, Union
+from pathlib import Path
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import json
+
+# Determine candidate paths for .env so settings load whether run from root or backend/
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+CANDIDATE_ENV_FILES = [
+    str(BACKEND_DIR / ".env"),
+    str(Path.cwd() / "backend" / ".env"),
+    str(Path.cwd() / ".env"),
+    ".env",
+]
 
 
 class Settings(BaseSettings):
@@ -42,16 +52,25 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",") if i.strip()]
         return v
 
+    # Database Configuration (PostgreSQL in production, sqlite+aiosqlite in local dev fallback)
+    DATABASE_URL: str = "sqlite+aiosqlite:///./mello.db"
+
+    # Authentication & Security
+    JWT_SECRET_KEY: str = "mello-super-secret-development-key-change-in-production-32chars"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    DAILY_MESSAGE_LIMIT: int = 50
+
     # LLM Settings
     LLM_PROVIDER: str = "gemini"  # "gemini" or "mock"
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
 
     # Support / Privacy
     SUPPORT_EMAIL: str = "support@example.com"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=CANDIDATE_ENV_FILES,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
