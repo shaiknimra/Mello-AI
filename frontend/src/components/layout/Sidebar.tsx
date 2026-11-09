@@ -286,6 +286,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Active
             </span>
           </div>
+
+          {/* Brand footer */}
+          <div className="pt-2 border-t border-gray-200 dark:border-mello-charcoal-800 flex items-center justify-center gap-1 select-none">
+            <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 tracking-tight">Mello</span>
+            <span className="text-[10px] font-semibold text-mello-purple-500 dark:text-mello-purple-400 tracking-wide">by NIRA</span>
+          </div>
         </div>
       </aside>
     </>

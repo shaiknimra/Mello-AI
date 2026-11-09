@@ -14,10 +14,13 @@ export const EmptyState: React.FC = () => {
       </div>
 
       {/* Brand & Tagline */}
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mb-2">
-        Mello AI
+      <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white mb-1">
+        Mello
       </h1>
-      <p className="text-base font-medium text-mello-purple-600 dark:text-mello-purple-400 mb-4">
+      <p className="text-xs font-semibold text-mello-purple-500 dark:text-mello-purple-400 tracking-widest uppercase mb-1">
+        by NIRA
+      </p>
+      <p className="text-base font-medium text-gray-500 dark:text-gray-400 mb-4">
         Think. Ask. Discover.
       </p>
 

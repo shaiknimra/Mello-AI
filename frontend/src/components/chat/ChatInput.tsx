@@ -74,7 +74,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       {/* Disclaimer */}
       <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500 select-none">
-        Mello AI can make mistakes. Consider verifying important facts.
+        Mello can make mistakes. Consider verifying important facts. &nbsp;·&nbsp; <span className="text-mello-purple-500 dark:text-mello-purple-400 font-medium">by NIRA</span>
       </p>
     </div>
   );

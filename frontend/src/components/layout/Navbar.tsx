@@ -47,11 +47,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           <div className="flex flex-col">
-            <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white">
-              Mello <span className="text-mello-purple-500">AI</span>
+            <span className="font-bold text-sm tracking-tight text-gray-900 dark:text-white leading-tight">
+              Mello
             </span>
-            <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 hidden sm:inline -mt-0.5">
-              Think. Ask. Discover.
+            <span className="text-[9px] font-medium text-mello-purple-500 dark:text-mello-purple-400 hidden sm:inline -mt-0.5 tracking-wide">
+              by NIRA
             </span>
           </div>
         </div>

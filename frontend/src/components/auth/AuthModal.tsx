@@ -77,9 +77,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <Sparkles className="w-6 h-6" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            {mode === 'login' ? 'Welcome Back to Mello' : 'Create your Mello Account'}
+            {mode === 'login' ? 'Welcome back to Mello' : 'Join Mello'}
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-[11px] font-semibold text-mello-purple-500 dark:text-mello-purple-400 tracking-widest uppercase mt-0.5">
+            by NIRA
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
             {mode === 'login'
               ? 'Sign in to access your private chat history and daily message allowance.'
               : 'Sign up to keep your conversations, uploaded files, and memory saved.'}
